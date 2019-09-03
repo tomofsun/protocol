@@ -20,7 +20,8 @@ public class ProtoBody {
      * 0: 心跳包ping
      * 1: 心跳包pong
      * 2: body为二进制的数据包
-     * 3: body为JSON的数据表
+     * 3: body为string的数据表
+     * 4: body为string的数据表
      */
     private byte type;
     /**
@@ -31,16 +32,11 @@ public class ProtoBody {
     /**
      * 报文长度(4字节)
      * unsigned int,由于java不支持unsigned,通过long表示
-     * 包括start,header,type,orderNo,length,body,end
+     * 包括start,header,type,orderNo,length,body
      */
     private long length;
     /**
      * 报文内容
      */
     private byte[] body;
-    /**
-     * 报文尾(4字节)
-     * 固定为0x88667755
-     */
-    private byte[] end;
 }

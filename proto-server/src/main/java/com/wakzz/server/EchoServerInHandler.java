@@ -1,12 +1,11 @@
 package com.wakzz.server;
 
+import com.wakzz.common.model.ProtoBody;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
-
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @ChannelHandler.Sharable
@@ -14,12 +13,15 @@ public class EchoServerInHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        ByteBuf result = (ByteBuf) msg;
-        String request = result.toString(StandardCharsets.UTF_8);
+        if (!(msg instanceof ProtoBody)) {
+            return;
+        }
+        ProtoBody protoBody = (ProtoBody) msg;
+        System.out.println(protoBody);
         // 接收并打印客户端的信息
-        log.info("Client said: {}", request);
+        log.info("Client said: {}", protoBody);
         // 释放资源，这行很关键
-        ReferenceCountUtil.release(msg);
+        ReferenceCountUtil.safeRelease(msg);
 
         // 向客户端发送消息
         String response = "I am ok!";

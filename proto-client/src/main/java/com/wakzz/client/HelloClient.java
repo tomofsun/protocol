@@ -1,5 +1,6 @@
 package com.wakzz.client;
 
+import com.wakzz.common.encoder.StringEncoder;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -7,7 +8,6 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +29,7 @@ public class HelloClient {
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
 //                            ch.pipeline().addLast(new HelloClientIntHandler());
-                            ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4));
+                            ch.pipeline().addLast(new StringEncoder());
                         }
                     });
 
@@ -37,11 +37,29 @@ public class HelloClient {
             ChannelFuture f = b.connect(host, port).sync();
 
             ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
-            String request = "hello world";
-            ByteBuf reqBuffer = Unpooled.copyInt(request.length());
-            reqBuffer.writeBytes(request.getBytes());
             Channel channel = f.channel();
-            channel.writeAndFlush(reqBuffer);
+            ByteBuf buffer0 = Unpooled.buffer();
+            ByteBuf buffer1 = Unpooled.buffer();
+
+            String body = "hello world";
+            buffer0.writeByte(0x55);
+            buffer0.writeByte(0x77);
+            buffer0.writeByte(0x66);
+            buffer0.writeByte(0x88);
+            // header
+            buffer0.writeByte(0x00);
+            // type
+            buffer0.writeByte(0x03);
+            // order
+            buffer0.writeShort(0);
+            // length
+            int frameLength = body.length() + 4 + 1 + 1 + 2 + 4;
+            buffer0.writeInt(frameLength);
+            // body
+            buffer1.writeBytes(body.getBytes());
+            channel.writeAndFlush(buffer0);
+            Thread.sleep(10_000);
+            channel.writeAndFlush(buffer1);
             channel.read().pipeline().addLast(new ChannelInboundHandlerAdapter() {
                 @Override
                 public void channelRead(ChannelHandlerContext ctx, Object msg) {
