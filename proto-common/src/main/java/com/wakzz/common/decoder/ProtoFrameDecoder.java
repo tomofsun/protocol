@@ -12,7 +12,7 @@ import java.util.List;
 public class ProtoFrameDecoder extends ByteToMessageDecoder {
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         List<Object> list = decode(ctx, in);
         if (!list.isEmpty()) {
             out.addAll(list);
@@ -75,8 +75,8 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
      */
     private void discardingIfIllegalStart(ByteBuf in) {
         while (in.readableBytes() >= 4) {
-            if (in.getByte(0) == (byte) 0x55 && in.getByte(1) == (byte) 0x77
-                    && in.getByte(2) == (byte) 0x66 && in.getByte(3) == (byte) 0x88) {
+            if (in.getByte(in.readerIndex()) == (byte) 0x55 && in.getByte(in.readerIndex() + 1) == (byte) 0x77
+                    && in.getByte(in.readerIndex() + 2) == (byte) 0x66 && in.getByte(in.readerIndex() + 3) == (byte) 0x88) {
                 return;
             }
             in.skipBytes(4);
@@ -87,14 +87,14 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
      * 获取当前请求报文的字节长度
      */
     private long getFrameLength(ByteBuf in, boolean isBigEndian) {
-        return (isBigEndian ? in.getInt(8) : in.getIntLE(8)) & 0x0FFFFL;
+        return (isBigEndian ? in.getInt(in.readerIndex() + 8) : in.getIntLE(in.readerIndex() + 8)) & 0x0FFFFL;
     }
 
     /**
      * 报文是否是大端
      */
     private boolean isBigEndian(ByteBuf in) {
-        byte header = in.getByte(4);
+        byte header = in.getByte(in.readerIndex() + 4);
         return (byte) (header & 0x1) == 0x0;
     }
 }

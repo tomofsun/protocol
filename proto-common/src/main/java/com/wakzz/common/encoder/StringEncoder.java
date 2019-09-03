@@ -1,5 +1,6 @@
 package com.wakzz.common.encoder;
 
+import com.wakzz.common.context.ProtoType;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
@@ -22,7 +23,7 @@ public class StringEncoder extends MessageToByteEncoder<String> {
         // header
         out.writeByte(0x00);
         // type
-        out.writeByte(0x03);
+        out.writeByte(ProtoType.String.getValue());
         // order
         out.writeShort(orderNo);
         // length

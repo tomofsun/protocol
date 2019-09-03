@@ -21,7 +21,6 @@ public class ProtoBody {
      * 1: 心跳包pong
      * 2: body为二进制的数据包
      * 3: body为string的数据表
-     * 4: body为string的数据表
      */
     private byte type;
     /**

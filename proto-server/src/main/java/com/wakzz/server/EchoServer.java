@@ -1,6 +1,9 @@
 package com.wakzz.server;
 
 import com.wakzz.common.decoder.ProtoFrameDecoder;
+import com.wakzz.common.encoder.ProtoBodyEncoder;
+import com.wakzz.common.handler.EchoHandler;
+import com.wakzz.common.handler.PrintfHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -23,9 +26,13 @@ public class EchoServer {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) {
-                            // 注册handler
+                            // in
                             ch.pipeline().addLast(new ProtoFrameDecoder());
-                            ch.pipeline().addLast(new EchoServerInHandler());
+                            ch.pipeline().addLast(new PrintfHandler());
+                            ch.pipeline().addLast(new EchoHandler());
+
+                            // out
+                            ch.pipeline().addLast(new ProtoBodyEncoder());
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 128)
@@ -40,10 +47,6 @@ public class EchoServer {
     }
 
     public static void main(String[] args) throws Exception {
-//        ByteBuf buffer = Unpooled.buffer();
-//        buffer.writeInt(1);
-//        buffer.writeIntLE(1);
-//        System.out.println(ByteBufUtil.hexDump(buffer));
         EchoServer server = new EchoServer();
         server.start(8000);
     }
