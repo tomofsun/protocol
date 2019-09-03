@@ -1,9 +1,9 @@
 package com.wakzz.client;
 
-import com.wakzz.common.encoder.StringEncoder;
+import com.wakzz.common.encoder.ProtoBodyEncoder;
+import com.wakzz.common.utils.ProtoBodyUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -27,9 +27,8 @@ public class HelloClient {
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        public void initChannel(SocketChannel ch) throws Exception {
-//                            ch.pipeline().addLast(new HelloClientIntHandler());
-                            ch.pipeline().addLast(new StringEncoder());
+                        public void initChannel(SocketChannel ch) {
+                            ch.pipeline().addLast(new ProtoBodyEncoder());
                         }
                     });
 
@@ -38,28 +37,8 @@ public class HelloClient {
 
             ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
             Channel channel = f.channel();
-            ByteBuf buffer0 = Unpooled.buffer();
-            ByteBuf buffer1 = Unpooled.buffer();
 
-            String body = "hello world";
-            buffer0.writeByte(0x55);
-            buffer0.writeByte(0x77);
-            buffer0.writeByte(0x66);
-            buffer0.writeByte(0x88);
-            // header
-            buffer0.writeByte(0x00);
-            // type
-            buffer0.writeByte(0x03);
-            // order
-            buffer0.writeShort(0);
-            // length
-            int frameLength = body.length() + 4 + 1 + 1 + 2 + 4;
-            buffer0.writeInt(frameLength);
-            // body
-            buffer1.writeBytes(body.getBytes());
-            channel.writeAndFlush(buffer0);
-            Thread.sleep(10_000);
-            channel.writeAndFlush(buffer1);
+            channel.writeAndFlush(ProtoBodyUtils.valueOf("hello world"));
             channel.read().pipeline().addLast(new ChannelInboundHandlerAdapter() {
                 @Override
                 public void channelRead(ChannelHandlerContext ctx, Object msg) {
