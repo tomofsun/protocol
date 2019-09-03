@@ -1,5 +1,6 @@
 package com.wakzz.server;
 
+import com.wakzz.common.decoder.ProtoFrameDecoder;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -8,7 +9,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 public class EchoServer {
 
@@ -24,7 +24,7 @@ public class EchoServer {
                         @Override
                         public void initChannel(SocketChannel ch) {
                             // 注册handler
-                            ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4));
+                            ch.pipeline().addLast(new ProtoFrameDecoder());
                             ch.pipeline().addLast(new EchoServerInHandler());
                         }
                     })
