@@ -3,6 +3,7 @@ package com.wakzz.server;
 import com.wakzz.common.decoder.ProtoFrameDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
 import com.wakzz.common.handler.EchoHandler;
+import com.wakzz.common.handler.HeartbeatHandler;
 import com.wakzz.common.handler.PrintfHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -26,13 +27,14 @@ public class EchoServer {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) {
-                            // in
-                            ch.pipeline().addLast(new ProtoFrameDecoder());
-                            ch.pipeline().addLast(new PrintfHandler());
-                            ch.pipeline().addLast(new EchoHandler());
-
                             // out
                             ch.pipeline().addLast(new ProtoBodyEncoder());
+
+                            // in
+                            ch.pipeline().addLast(new ProtoFrameDecoder());
+                            ch.pipeline().addLast(new HeartbeatHandler());
+                            ch.pipeline().addLast(new PrintfHandler());
+                            ch.pipeline().addLast(new EchoHandler());
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 128)

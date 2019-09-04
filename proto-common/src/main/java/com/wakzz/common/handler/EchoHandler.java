@@ -12,8 +12,8 @@ public class EchoHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        super.channelRead(ctx, msg);
         if (!(msg instanceof ProtoBody)) {
+            super.channelRead(ctx, msg);
             return;
         }
         ProtoBody request = (ProtoBody) msg;
@@ -23,7 +23,13 @@ public class EchoHandler extends ChannelInboundHandlerAdapter {
         ProtoBody response = ProtoBodyUtils.valueOf("I am ok!");
         ChannelFuture channelFuture = ctx.writeAndFlush(response);
 
-        channelFuture.addListener((ChannelFutureListener) future -> log.info("服务端request: {}, response: {}", new String(request.getBody()), new String(response.getBody())));
+        channelFuture.addListener((ChannelFutureListener) future -> {
+            if (future.isSuccess()){
+                log.info("服务端request: {}, response: {}", new String(request.getBody()), new String(response.getBody()));
+            } else {
+                log.error(future.cause().getMessage(), future.cause().getCause());
+            }
+        });
     }
 
     @Override
