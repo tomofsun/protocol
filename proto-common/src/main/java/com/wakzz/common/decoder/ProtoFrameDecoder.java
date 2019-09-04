@@ -37,11 +37,6 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
 
             // 检查报文是否接受完整
             long frameLength = getFrameLength(in, isBigEndian);
-            // 报文长度错误,抛弃报文
-            if (frameLength < 12) {
-                in.skipBytes(4);
-                continue;
-            }
             // TODO 最大请求报文长度
             // TODO 等待超时后抛弃报文
             // 半包等待后续数据
@@ -52,17 +47,16 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
             byte[] start = ByteBufUtil.getBytes(in.readBytes(4));
             byte header = in.readByte();
             byte type = in.readByte();
-            int orderNo = (isBigEndian ? in.readShort() : in.readShortLE()) & 0xFFFF;
-            in.skipBytes(4);
-            long bodyLength = frameLength - 4 - 1 - 1 - 2 - 4;
-            byte[] body = ByteBufUtil.getBytes(in.readBytes((int) bodyLength));
+            int version = (isBigEndian ? in.readShort() : in.readShortLE()) & 0xFFFF;
+            long length = (isBigEndian ? in.readInt() : in.readIntLE()) & 0x0FFFFL;
+            byte[] body = ByteBufUtil.getBytes(in.readBytes((int) length));
 
             ProtoBody protoBody = new ProtoBody();
             protoBody.setStart(start);
             protoBody.setHeader(header);
             protoBody.setType(type);
-            protoBody.setOrderNo(orderNo);
-            protoBody.setLength(frameLength);
+            protoBody.setVersion(version);
+            protoBody.setLength(length);
             protoBody.setBody(body);
             list.add(protoBody);
         }
@@ -75,11 +69,23 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
      */
     private void discardingIfIllegalStart(ByteBuf in) {
         while (in.readableBytes() >= 4) {
-            if (in.getByte(in.readerIndex()) == (byte) 0x55 && in.getByte(in.readerIndex() + 1) == (byte) 0x77
-                    && in.getByte(in.readerIndex() + 2) == (byte) 0x66 && in.getByte(in.readerIndex() + 3) == (byte) 0x88) {
-                return;
+            if (in.getByte(in.readerIndex()) != (byte) 0x55) {
+                in.skipBytes(1);
+                continue;
             }
-            in.skipBytes(4);
+            if (in.getByte(in.readerIndex() + 1) != (byte) 0x77) {
+                in.skipBytes(2);
+                continue;
+            }
+            if (in.getByte(in.readerIndex() + 2) != (byte) 0x66) {
+                in.skipBytes(3);
+                continue;
+            }
+            if (in.getByte(in.readerIndex() + 3) != (byte) 0x88) {
+                in.skipBytes(4);
+                continue;
+            }
+            break;
         }
     }
 
@@ -87,7 +93,8 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
      * 获取当前请求报文的字节长度
      */
     private long getFrameLength(ByteBuf in, boolean isBigEndian) {
-        return (isBigEndian ? in.getInt(in.readerIndex() + 8) : in.getIntLE(in.readerIndex() + 8)) & 0x0FFFFL;
+        long length = (isBigEndian ? in.getInt(in.readerIndex() + 8) : in.getIntLE(in.readerIndex() + 8)) & 0x0FFFFL;
+        return length + 4 + 1 + 1 + 2 + 4;
     }
 
     /**

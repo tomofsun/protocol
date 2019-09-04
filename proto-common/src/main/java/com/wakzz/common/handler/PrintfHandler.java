@@ -10,13 +10,12 @@ public class PrintfHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        super.channelRead(ctx, msg);
-        if (!(msg instanceof ProtoBody)) {
-            return;
+        if (msg instanceof ProtoBody) {
+            ProtoBody protoBody = (ProtoBody) msg;
+            log.info("protoBody: {}", new String(protoBody.getBody()));
         }
 
-        ProtoBody protoBody = (ProtoBody) msg;
-        log.info("protoBody: {}", new String(protoBody.getBody()));
+        super.channelRead(ctx, msg);
     }
 
 }

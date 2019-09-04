@@ -24,14 +24,13 @@ public class ProtoBody {
      */
     private byte type;
     /**
-     * 报文序号(2字节)
+     * 版本号(2字节)
      * unsigned short,由于java不支持unsigned,通过int表示
      */
-    private int orderNo;
+    private int version;
     /**
-     * 报文长度(4字节)
+     * body报文长度(4字节)
      * unsigned int,由于java不支持unsigned,通过long表示
-     * 包括start,header,type,orderNo,length,body
      */
     private long length;
     /**

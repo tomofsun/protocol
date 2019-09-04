@@ -1,17 +1,19 @@
 package com.wakzz.client;
 
+import com.wakzz.common.decoder.ProtoFrameDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
+import com.wakzz.common.handler.HeartbeatHandler;
+import com.wakzz.common.model.ProtoBody;
 import com.wakzz.common.utils.ProtoBodyUtils;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -28,7 +30,13 @@ public class HelloClient {
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) {
+                            // out
                             ch.pipeline().addLast(new ProtoBodyEncoder());
+
+                            // in
+                            ch.pipeline().addLast(new ProtoFrameDecoder());
+                            ch.pipeline().addLast(new IdleStateHandler(0, 0, 10));
+                            ch.pipeline().addLast(new HeartbeatHandler());
                         }
                     });
 
@@ -38,17 +46,17 @@ public class HelloClient {
             ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
             Channel channel = f.channel();
 
-            channel.writeAndFlush(ProtoBodyUtils.valueOf("hello world"));
-            channel.read().pipeline().addLast(new ChannelInboundHandlerAdapter() {
+            channel.pipeline().addLast(new ChannelInboundHandlerAdapter() {
                 @Override
                 public void channelRead(ChannelHandlerContext ctx, Object msg) {
-                    ByteBuf result = (ByteBuf) msg;
-                    String response = result.toString(StandardCharsets.UTF_8);
+                    ProtoBody protoBody = (ProtoBody) msg;
+                    String response = new String(protoBody.getBody());
                     queue.add(response);
                     ReferenceCountUtil.release(msg);
-                    ctx.close();
+//                    ctx.close();
                 }
             });
+            channel.writeAndFlush(ProtoBodyUtils.valueOf("hello world"));
             String response = queue.poll(5, TimeUnit.SECONDS);
             System.out.println("response:" + response);
 
