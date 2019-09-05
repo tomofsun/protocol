@@ -2,17 +2,19 @@ package com.wakzz.client;
 
 import io.netty.channel.Channel;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.Closeable;
 
 @Data
-public class ProtoConnection implements Cloneable {
+@Slf4j
+public class ProtoConnection implements Closeable {
 
     private Channel channel;
     private ProtoConnectionManager connectionManager;
 
-    public void close() throws InterruptedException {
-        if (channel.isOpen()){
-            channel.close().sync();
-        }
+    public void close() {
+        connectionManager.closeAndRemoveConnection(this);
     }
 
     public void release(){

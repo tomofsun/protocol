@@ -4,20 +4,29 @@ import com.wakzz.common.decoder.ProtoFrameDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
 import com.wakzz.common.handler.HeartbeatHandler;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
+import lombok.extern.slf4j.Slf4j;
 
+import java.io.Closeable;
+import java.util.Iterator;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class ProtoConnectionManager {
+@Slf4j
+public class ProtoConnectionManager implements Closeable {
 
     private String host;
     private int port;
     private Bootstrap bootstrap;
+    private EventLoopGroup workerGroup;
+    private AtomicInteger connectionCount = new AtomicInteger();
     private LinkedBlockingQueue<ProtoConnection> pool = new LinkedBlockingQueue<>();
 
     public ProtoConnectionManager(String host, int port) {
@@ -27,8 +36,9 @@ public class ProtoConnectionManager {
     }
 
     private void initBootstrap() {
+        workerGroup = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
-        bootstrap.group(new NioEventLoopGroup())
+        bootstrap.group(workerGroup)
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .handler(new ChannelInitializer<SocketChannel>() {
@@ -45,12 +55,56 @@ public class ProtoConnectionManager {
                 });
     }
 
-    public ProtoConnection getConnection() throws InterruptedException {
-        return pool.take();
+    private ProtoConnection createConnection() throws InterruptedException {
+        Channel channel = bootstrap.connect(host, port).sync().channel();
+        ProtoConnection connection = new ProtoConnection();
+        connection.setChannel(channel);
+        connection.setConnectionManager(this);
+        connectionCount.incrementAndGet();
+        return connection;
     }
 
-    public void addConnection(ProtoConnection connection) {
+    public synchronized ProtoConnection getConnection() throws InterruptedException {
+        while (!pool.isEmpty()) {
+            ProtoConnection connection = pool.take();
+            if (connection.getChannel().isOpen()) {
+                return connection;
+            }
+        }
+        return createConnection();
+    }
+
+    synchronized void addConnection(ProtoConnection connection) {
         pool.add(connection);
     }
 
+    private void removeConnection(ProtoConnection connection) {
+        pool.remove(connection);
+    }
+
+    private void closeConnection(ProtoConnection connection) {
+        try {
+            Channel channel = connection.getChannel();
+            if (channel.isOpen()) {
+                channel.close().sync();
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
+    synchronized void closeAndRemoveConnection(ProtoConnection connection) {
+        closeConnection(connection);
+        removeConnection(connection);
+    }
+
+    @Override
+    public synchronized void close() {
+        Iterator<ProtoConnection> iterator = pool.iterator();
+        while (iterator.hasNext()){
+            closeConnection(iterator.next());
+            iterator.remove();
+        }
+        workerGroup.shutdownGracefully();
+    }
 }

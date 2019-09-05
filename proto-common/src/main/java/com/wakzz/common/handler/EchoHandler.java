@@ -20,7 +20,7 @@ public class EchoHandler extends ChannelInboundHandlerAdapter {
         ReferenceCountUtil.safeRelease(msg);
 
         // 向客户端发送消息
-        ProtoBody response = ProtoBodyUtils.valueOf("I am ok!");
+        ProtoBody response = ProtoBodyUtils.valueOf(request.getBody());
         ChannelFuture channelFuture = ctx.writeAndFlush(response);
 
         channelFuture.addListener((ChannelFutureListener) future -> {

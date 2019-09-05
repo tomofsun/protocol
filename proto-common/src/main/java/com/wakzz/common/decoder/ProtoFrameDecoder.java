@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.util.ReferenceCountUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,12 +45,16 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
                 break;
             }
 
-            byte[] start = ByteBufUtil.getBytes(in.readBytes(4));
+            ByteBuf startBuf = in.readBytes(4);
+            byte[] start = ByteBufUtil.getBytes(startBuf);
+            ReferenceCountUtil.safeRelease(startBuf);
             byte header = in.readByte();
             byte type = in.readByte();
             int version = (isBigEndian ? in.readShort() : in.readShortLE()) & 0xFFFF;
             long length = (isBigEndian ? in.readInt() : in.readIntLE()) & 0x0FFFFL;
-            byte[] body = ByteBufUtil.getBytes(in.readBytes((int) length));
+            ByteBuf bodyBuf = in.readBytes((int) length);
+            byte[] body = ByteBufUtil.getBytes(bodyBuf);
+            ReferenceCountUtil.safeRelease(bodyBuf);
 
             ProtoBody protoBody = new ProtoBody();
             protoBody.setStart(start);
