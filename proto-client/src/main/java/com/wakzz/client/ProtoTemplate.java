@@ -3,17 +3,14 @@ package com.wakzz.client;
 import com.wakzz.common.model.ProtoBody;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.io.Closeable;
+import java.util.concurrent.*;
 
 @Slf4j
-public class ProtoTemplate {
+public class ProtoTemplate implements Closeable {
 
     private ExecutorService executorService;
     private ProtoConnectionManager connectionManager;
@@ -27,27 +24,27 @@ public class ProtoTemplate {
         this.executorService = Executors.newCachedThreadPool();
     }
 
-    public ProtoBody sendSyncRequest(ProtoBody request) throws InterruptedException {
+    public ProtoBody sendSyncRequest(ProtoBody request) throws Exception {
         ProtoConnection connection = null;
         try {
             connection = connectionManager.getConnection();
             Channel channel = connection.getChannel();
             ArrayBlockingQueue<ProtoBody> queue = new ArrayBlockingQueue<>(1);
-            channel.pipeline().addLast(new ChannelInboundHandlerAdapter() {
+            channel.pipeline().addLast(SimpleChannelInboundHandler.class.getName(), new SimpleChannelInboundHandler<ProtoBody>() {
                 @Override
-                public void channelRead(ChannelHandlerContext ctx, Object msg) {
+                protected void channelRead0(ChannelHandlerContext ctx, ProtoBody protoBody) {
                     channel.pipeline().remove(this);
-                    ProtoBody protoBody = (ProtoBody) msg;
                     queue.add(protoBody);
-                    ReferenceCountUtil.release(msg);
                 }
             });
             channel.writeAndFlush(request);
             ProtoBody response = queue.poll(5, TimeUnit.SECONDS);
+            if (response == null) {
+                throw new TimeoutException();
+            }
             connection.release();
             return response;
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
             if (connection != null) {
                 connection.close();
             }
@@ -64,5 +61,11 @@ public class ProtoTemplate {
                 callback.onFailure(request, e);
             }
         });
+    }
+
+    @Override
+    public void close() {
+        this.connectionManager.close();
+        this.executorService.shutdown();
     }
 }

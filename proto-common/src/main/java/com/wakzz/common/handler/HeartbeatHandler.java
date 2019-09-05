@@ -6,30 +6,34 @@ import com.wakzz.common.utils.ProtoBodyUtils;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.IdleStateEvent;
-import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @ChannelHandler.Sharable
-public class HeartbeatHandler extends ChannelInboundHandlerAdapter {
+public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ProtoBody protoBody = (ProtoBody) msg;
+    protected void channelRead0(ChannelHandlerContext ctx, ProtoBody protoBody) {
+        try {
+            handleRead(ctx, protoBody);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
+    private void handleRead(ChannelHandlerContext ctx, ProtoBody protoBody) {
         if (protoBody.getType() == ProtoType.Pong.getValue()) {
             // 服务端返回的心跳包response,不需要处理
             log.info("接收心跳包pong");
-            ReferenceCountUtil.safeRelease(msg);
         } else if (protoBody.getType() == ProtoType.Ping.getValue()) {
             // 客户端请求的心跳包request,返回心跳包response
             log.info("接收心跳包ping");
-            ReferenceCountUtil.safeRelease(msg);
             ProtoBody response = ProtoBodyUtils.valueOf(ProtoType.Pong, null);
             ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
         } else {
-            super.channelRead(ctx, msg);
+            ctx.fireChannelRead(protoBody);
         }
     }
 
