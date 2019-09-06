@@ -30,15 +30,16 @@ public class ProtoTemplate implements Closeable {
             connection = connectionManager.getConnection();
             Channel channel = connection.getChannel();
             ArrayBlockingQueue<ProtoBody> queue = new ArrayBlockingQueue<>(1);
-            channel.pipeline().addLast(SimpleChannelInboundHandler.class.getName(), new SimpleChannelInboundHandler<ProtoBody>() {
+            String handlerName = "sendSyncRequestHandler";
+            channel.pipeline().addLast(handlerName, new SimpleChannelInboundHandler<ProtoBody>() {
                 @Override
                 protected void channelRead0(ChannelHandlerContext ctx, ProtoBody protoBody) {
-                    channel.pipeline().remove(this);
                     queue.add(protoBody);
                 }
             });
             channel.writeAndFlush(request);
             ProtoBody response = queue.poll(5, TimeUnit.SECONDS);
+            channel.pipeline().remove(handlerName);
             if (response == null) {
                 throw new TimeoutException();
             }

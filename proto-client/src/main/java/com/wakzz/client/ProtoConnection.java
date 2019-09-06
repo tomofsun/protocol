@@ -18,7 +18,7 @@ public class ProtoConnection implements Closeable {
     }
 
     public void release(){
-        connectionManager.addConnection(this);
+        connectionManager.release(this);
     }
 
 }

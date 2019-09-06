@@ -24,6 +24,7 @@ public class ProtoConnectionManager implements Closeable {
 
     private String host;
     private int port;
+    private ConnectionManagerStatus status;
     private Bootstrap bootstrap;
     private EventLoopGroup workerGroup;
     private AtomicInteger connectionCount = new AtomicInteger();
@@ -53,20 +54,28 @@ public class ProtoConnectionManager implements Closeable {
                         ch.pipeline().addLast(new HeartbeatHandler());
                     }
                 });
+        status = ConnectionManagerStatus.Running;
     }
 
-    private ProtoConnection createConnection() throws InterruptedException {
-        Channel channel = bootstrap.connect(host, port).sync().channel();
-        ProtoConnection connection = new ProtoConnection();
-        connection.setChannel(channel);
-        connection.setConnectionManager(this);
-        connectionCount.incrementAndGet();
-        return connection;
+    private ProtoConnection createConnection() {
+        try {
+            Channel channel = bootstrap.connect(host, port).sync().channel();
+            ProtoConnection connection = new ProtoConnection();
+            connection.setChannel(channel);
+            connection.setConnectionManager(this);
+            connectionCount.incrementAndGet();
+            return connection;
+        } catch (Exception e){
+            throw new RuntimeException(e);
+        }
     }
 
-    public synchronized ProtoConnection getConnection() throws InterruptedException {
+    public synchronized ProtoConnection getConnection() {
+        if (status != ConnectionManagerStatus.Running){
+            throw new RuntimeException("连接池已关闭");
+        }
         while (!pool.isEmpty()) {
-            ProtoConnection connection = pool.take();
+            ProtoConnection connection = pool.poll();
             if (connection.getChannel().isOpen()) {
                 return connection;
             }
@@ -74,7 +83,11 @@ public class ProtoConnectionManager implements Closeable {
         return createConnection();
     }
 
-    synchronized void addConnection(ProtoConnection connection) {
+    synchronized void release(ProtoConnection connection) {
+        if (status != ConnectionManagerStatus.Running){
+            closeConnection(connection);
+            return;
+        }
         pool.add(connection);
     }
 
@@ -100,6 +113,7 @@ public class ProtoConnectionManager implements Closeable {
 
     @Override
     public synchronized void close() {
+        this.status = ConnectionManagerStatus.Shutdown;
         Iterator<ProtoConnection> iterator = pool.iterator();
         while (iterator.hasNext()){
             closeConnection(iterator.next());
