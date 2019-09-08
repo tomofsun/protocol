@@ -1,7 +1,10 @@
 package com.wakzz.client;
 
+import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.model.ProtoBody;
+import com.wakzz.common.utils.ProtoBodyUtils;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +32,8 @@ public class ProtoTemplate implements Closeable {
         try {
             connection = connectionManager.getConnection();
             Channel channel = connection.getChannel();
+            channel.writeAndFlush(ProtoBodyUtils.valueOf(ProtoType.Ping, null))
+                    .addListener(ChannelFutureListener.CLOSE_ON_FAILURE).sync();
             ArrayBlockingQueue<ProtoBody> queue = new ArrayBlockingQueue<>(1);
             String handlerName = "sendSyncRequestHandler";
             channel.pipeline().addLast(handlerName, new SimpleChannelInboundHandler<ProtoBody>() {

@@ -14,11 +14,15 @@ public class ProtoConnection implements Closeable {
     private ProtoConnectionManager connectionManager;
 
     public void close() {
-        connectionManager.closeAndRemoveConnection(this);
+        connectionManager.closeConnection(this);
     }
 
     public void release(){
-        connectionManager.release(this);
+        try {
+            connectionManager.release(this);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

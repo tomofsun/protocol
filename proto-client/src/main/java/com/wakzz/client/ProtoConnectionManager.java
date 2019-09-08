@@ -1,8 +1,10 @@
 package com.wakzz.client;
 
+import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.decoder.ProtoFrameDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
 import com.wakzz.common.handler.HeartbeatHandler;
+import com.wakzz.common.utils.ProtoBodyUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -17,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.Closeable;
 import java.util.Iterator;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -24,6 +28,7 @@ public class ProtoConnectionManager implements Closeable {
 
     private String host;
     private int port;
+    private ProtoPoolConfig config;
     private ConnectionManagerStatus status;
     private Bootstrap bootstrap;
     private EventLoopGroup workerGroup;
@@ -31,8 +36,13 @@ public class ProtoConnectionManager implements Closeable {
     private LinkedBlockingQueue<ProtoConnection> pool = new LinkedBlockingQueue<>();
 
     public ProtoConnectionManager(String host, int port) {
+        this(host, port, new ProtoPoolConfig());
+    }
+
+    public ProtoConnectionManager(String host, int port, ProtoPoolConfig config) {
         this.host = host;
         this.port = port;
+        this.config = config;
         initBootstrap();
     }
 
@@ -50,7 +60,9 @@ public class ProtoConnectionManager implements Closeable {
 
                         // in
                         ch.pipeline().addLast(new ProtoFrameDecoder());
-                        ch.pipeline().addLast(new IdleStateHandler(0, 0, 10));
+                        if (config.isTestWhileIdle()) {
+                            ch.pipeline().addLast(new IdleStateHandler(0, 0, config.getTimeBetweenEvictionRunsSec()));
+                        }
                         ch.pipeline().addLast(new HeartbeatHandler());
                     }
                 });
@@ -65,39 +77,74 @@ public class ProtoConnectionManager implements Closeable {
             connection.setConnectionManager(this);
             connectionCount.incrementAndGet();
             return connection;
-        } catch (Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public synchronized ProtoConnection getConnection() {
-        if (status != ConnectionManagerStatus.Running){
+    /**
+     * 从连接池申请连接
+     * 如果开启了testOnReturn,则获取连接后发起一次心跳包
+     */
+    public synchronized ProtoConnection getConnection() throws InterruptedException {
+        // 检查连接池是否已经关闭
+        if (status != ConnectionManagerStatus.Running) {
             throw new RuntimeException("连接池已关闭");
         }
-        while (!pool.isEmpty()) {
-            ProtoConnection connection = pool.poll();
-            if (connection.getChannel().isOpen()) {
-                return connection;
+        // 当连接池没有可以复用的连接且已创建的连接数量未达到上限时允许创建新连接
+        if (pool.isEmpty() && connectionCount.intValue() < config.getMaxConnectionCount()) {
+            return createConnection();
+        }
+        ProtoConnection connection;
+        try {
+            connection = pool.poll(config.getConnectTimeoutMillis(), TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        if (connection == null) {
+            throw new RuntimeException(new TimeoutException("获取连接超时"));
+        }
+        if (config.isTestOnBorrow()) {
+            Channel channel = connection.getChannel();
+            channel.writeAndFlush(ProtoBodyUtils.valueOf(ProtoType.Ping, null))
+                    .addListener(future -> {
+                        if (!future.isSuccess())
+                            closeConnection(connection);
+                    }).sync();
+            if (!channel.isOpen()) {
+                return getConnection();
             }
         }
-        return createConnection();
+        return connection;
     }
 
-    synchronized void release(ProtoConnection connection) {
-        if (status != ConnectionManagerStatus.Running){
+    /**
+     * 向连接池返还连接
+     * 如果开启了testOnReturn,则返还连接前发起一次心跳包
+     */
+    synchronized void release(ProtoConnection connection) throws InterruptedException {
+        if (status != ConnectionManagerStatus.Running) {
             closeConnection(connection);
             return;
+        }
+        if (config.isTestOnReturn()) {
+            Channel channel = connection.getChannel();
+            channel.writeAndFlush(ProtoBodyUtils.valueOf(ProtoType.Ping, null))
+                    .addListener(future -> {
+                        if (!future.isSuccess())
+                            closeConnection(connection);
+                    }).sync();
+            if (!channel.isOpen()) {
+                return;
+            }
         }
         pool.add(connection);
     }
 
-    private void removeConnection(ProtoConnection connection) {
-        pool.remove(connection);
-    }
-
-    private void closeConnection(ProtoConnection connection) {
+    void closeConnection(ProtoConnection connection) {
         try {
             Channel channel = connection.getChannel();
+            connectionCount.addAndGet(-1);
             if (channel.isOpen()) {
                 channel.close().sync();
             }
@@ -106,19 +153,15 @@ public class ProtoConnectionManager implements Closeable {
         }
     }
 
-    synchronized void closeAndRemoveConnection(ProtoConnection connection) {
-        closeConnection(connection);
-        removeConnection(connection);
-    }
-
     @Override
     public synchronized void close() {
         this.status = ConnectionManagerStatus.Shutdown;
         Iterator<ProtoConnection> iterator = pool.iterator();
-        while (iterator.hasNext()){
+        while (iterator.hasNext()) {
             closeConnection(iterator.next());
             iterator.remove();
         }
         workerGroup.shutdownGracefully();
     }
+
 }
