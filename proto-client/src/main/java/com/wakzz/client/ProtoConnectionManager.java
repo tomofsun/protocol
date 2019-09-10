@@ -58,7 +58,9 @@ public class ProtoConnectionManager implements Closeable {
                     public void initChannel(SocketChannel ch) {
                         ch.pipeline().addLast(new ProtoBodyEncoder());
                         ch.pipeline().addLast(new ProtoFrameDecoder());
-                        ch.pipeline().addLast(new SSLClientCodec());
+                        if (config.isEnableSSL()) {
+                            ch.pipeline().addLast(new SSLClientCodec());
+                        }
                         if (config.isTestWhileIdle()) {
                             ch.pipeline().addLast(new IdleStateHandler(0, 0, config.getTimeBetweenEvictionRunsSec()));
                         }

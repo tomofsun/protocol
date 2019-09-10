@@ -46,5 +46,9 @@ public class ProtoPoolConfig {
      * 连接空闲时间大于等于该值则断开连接
      */
     private long maxIdleTimeMillis = 30 * 60 * 1000L;
+    /**
+     * 是否开启SSL
+     */
+    private boolean enableSSL = false;
 
 }
