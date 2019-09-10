@@ -4,6 +4,7 @@ import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.decoder.ProtoFrameDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
 import com.wakzz.common.handler.HeartbeatHandler;
+import com.wakzz.common.handler.SSLClientCodec;
 import com.wakzz.common.utils.ProtoBodyUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -55,11 +56,9 @@ public class ProtoConnectionManager implements Closeable {
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) {
-                        // out
                         ch.pipeline().addLast(new ProtoBodyEncoder());
-
-                        // in
                         ch.pipeline().addLast(new ProtoFrameDecoder());
+                        ch.pipeline().addLast(new SSLClientCodec());
                         if (config.isTestWhileIdle()) {
                             ch.pipeline().addLast(new IdleStateHandler(0, 0, config.getTimeBetweenEvictionRunsSec()));
                         }
