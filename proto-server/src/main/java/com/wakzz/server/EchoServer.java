@@ -5,7 +5,6 @@ import com.wakzz.common.encoder.ProtoBodyEncoder;
 import com.wakzz.common.handler.EchoHandler;
 import com.wakzz.common.handler.HeartbeatHandler;
 import com.wakzz.common.handler.PrintfHandler;
-import com.wakzz.common.handler.SSLServerCodec;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -31,7 +30,7 @@ public class EchoServer {
                             ch.pipeline().addLast(new ProtoBodyEncoder());
                             ch.pipeline().addLast(new ProtoFrameDecoder());
 
-                            ch.pipeline().addLast(new SSLServerCodec());
+//                            ch.pipeline().addLast(new SSLServerCodec());
 
                             ch.pipeline().addLast(new HeartbeatHandler());
                             ch.pipeline().addLast(new PrintfHandler());

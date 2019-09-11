@@ -6,24 +6,40 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProtoBodyUtils {
 
+    private static final AtomicInteger requestId = new AtomicInteger();
+
     public static ProtoBody valueOf(String body) {
+        return valueOf(requestId.getAndIncrement(), body);
+    }
+
+    public static ProtoBody valueOf(int id, String body) {
         byte[] bytes = body == null ? null : body.getBytes(StandardCharsets.UTF_8);
-        return valueOf(ProtoType.String, bytes);
+        return valueOf(id, ProtoType.String, bytes);
     }
 
     public static ProtoBody valueOf(byte[] body) {
-        return valueOf(ProtoType.Binary, body);
+        return valueOf(requestId.getAndIncrement(), body);
+    }
+
+    public static ProtoBody valueOf(int id, byte[] body) {
+        return valueOf(id, ProtoType.Binary, body);
     }
 
     public static ProtoBody valueOf(ProtoType type, byte[] body) {
+        return valueOf(requestId.getAndIncrement(), type, body);
+    }
+
+    public static ProtoBody valueOf(int id, ProtoType type, byte[] body) {
         ProtoBody protoBody = new ProtoBody();
         protoBody.setStart(new byte[]{(byte) 0x55, (byte) 0x77, (byte) 0x66, (byte) 0x88});
         protoBody.setHeader((byte) 0x00);
         protoBody.setType(type.getValue());
         protoBody.setVersion(0x0000);
+        protoBody.setId(id);
         protoBody.setLength(body == null ? 0 : body.length);
         if (body != null) {
             protoBody.setBody(body);
@@ -44,8 +60,10 @@ public class ProtoBodyUtils {
         out.writeByte(protoBody.getHeader());
         // type
         out.writeByte(protoBody.getType());
-        // order
+        // version
         out.writeShort(protoBody.getVersion());
+        // id
+        out.writeInt(protoBody.getId());
         // length
         out.writeInt((int) protoBody.getLength());
         // body

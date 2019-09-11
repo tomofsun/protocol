@@ -3,6 +3,7 @@ package com.wakzz.client;
 import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.decoder.ProtoFrameDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
+import com.wakzz.common.handler.FutureClientHandler;
 import com.wakzz.common.handler.HeartbeatHandler;
 import com.wakzz.common.handler.SSLClientCodec;
 import com.wakzz.common.utils.ProtoBodyUtils;
@@ -58,13 +59,12 @@ public class ProtoConnectionManager implements Closeable {
                     public void initChannel(SocketChannel ch) {
                         ch.pipeline().addLast(new ProtoBodyEncoder());
                         ch.pipeline().addLast(new ProtoFrameDecoder());
-                        if (config.isEnableSSL()) {
-                            ch.pipeline().addLast(new SSLClientCodec());
-                        }
+                        ch.pipeline().addLast(new SSLClientCodec());
                         if (config.isTestWhileIdle()) {
                             ch.pipeline().addLast(new IdleStateHandler(0, 0, config.getTimeBetweenEvictionRunsSec()));
                         }
                         ch.pipeline().addLast(new HeartbeatHandler());
+                        ch.pipeline().addLast(new FutureClientHandler());
                     }
                 });
         status = ConnectionManagerStatus.Running;

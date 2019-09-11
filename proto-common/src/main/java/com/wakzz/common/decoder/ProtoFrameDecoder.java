@@ -51,6 +51,7 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
             byte header = in.readByte();
             byte type = in.readByte();
             int version = (isBigEndian ? in.readShort() : in.readShortLE()) & 0xFFFF;
+            int id = (isBigEndian ? in.readInt() : in.readIntLE());
             long length = (isBigEndian ? in.readInt() : in.readIntLE()) & 0x0FFFFL;
             ByteBuf bodyBuf = in.readBytes((int) length);
             byte[] body = ByteBufUtil.getBytes(bodyBuf);
@@ -61,6 +62,7 @@ public class ProtoFrameDecoder extends ByteToMessageDecoder {
             protoBody.setHeader(header);
             protoBody.setType(type);
             protoBody.setVersion(version);
+            protoBody.setId(id);
             protoBody.setLength(length);
             protoBody.setBody(body);
             list.add(protoBody);

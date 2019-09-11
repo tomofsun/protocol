@@ -14,10 +14,11 @@ public class EchoHandler extends SimpleChannelInboundHandler<ProtoBody> {
         handleRead(ctx, protoBody);
     }
 
-    private void handleRead(ChannelHandlerContext ctx, ProtoBody protoBody) {
+    private void handleRead(ChannelHandlerContext ctx, ProtoBody request) {
         // 向客户端发送消息
-        String body = new String(protoBody.getBody());
-        ChannelFuture channelFuture = ctx.writeAndFlush(ProtoBodyUtils.valueOf(body));
+        String body = new String(request.getBody());
+        ProtoBody response = ProtoBodyUtils.valueOf(request.getId(), body);
+        ChannelFuture channelFuture = ctx.writeAndFlush(response);
 
         channelFuture.addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
@@ -26,7 +27,7 @@ public class EchoHandler extends SimpleChannelInboundHandler<ProtoBody> {
                 log.error(future.cause().getMessage(), future.cause().getCause());
             }
         });
-        ctx.fireChannelRead(protoBody);
+        ctx.fireChannelRead(request);
     }
 
     @Override

@@ -1,6 +1,4 @@
-package com.wakzz.client;
-
-import com.wakzz.common.model.ProtoBody;
+package com.wakzz.common.model;
 
 public interface Callback {
 

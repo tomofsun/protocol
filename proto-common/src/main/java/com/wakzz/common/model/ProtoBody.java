@@ -29,6 +29,10 @@ public class ProtoBody {
      */
     private int version;
     /**
+     * 请求id(4字节)
+     */
+    private Integer id;
+    /**
      * body报文长度(4字节)
      * unsigned int,由于java不支持unsigned,通过long表示
      */

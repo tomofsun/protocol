@@ -1,5 +1,6 @@
 package com.wakzz.client;
 
+import com.wakzz.common.model.Callback;
 import com.wakzz.common.model.ProtoBody;
 import com.wakzz.common.utils.ProtoBodyUtils;
 import lombok.extern.slf4j.Slf4j;
