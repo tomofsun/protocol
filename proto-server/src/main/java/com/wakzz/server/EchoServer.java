@@ -1,11 +1,10 @@
 package com.wakzz.server;
 
-import com.wakzz.common.decoder.ProtoFrameDecoder;
+import com.wakzz.common.decoder.ProtoBodyDecoder;
+import com.wakzz.common.decoder.SerializerDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
+import com.wakzz.common.encoder.SerializerEncoder;
 import com.wakzz.common.handler.EchoHandler;
-import com.wakzz.common.handler.HeartbeatHandler;
-import com.wakzz.common.handler.PrintfHandler;
-import com.wakzz.common.handler.SSLServerCodec;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -29,12 +28,11 @@ public class EchoServer {
                         @Override
                         public void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(new ProtoBodyEncoder());
-                            ch.pipeline().addLast(new ProtoFrameDecoder());
+                            ch.pipeline().addLast(new ProtoBodyDecoder());
 
-                            ch.pipeline().addLast(new SSLServerCodec());
+                            ch.pipeline().addLast(new SerializerEncoder());
+                            ch.pipeline().addLast(new SerializerDecoder());
 
-                            ch.pipeline().addLast(new HeartbeatHandler());
-                            ch.pipeline().addLast(new PrintfHandler());
                             ch.pipeline().addLast(new EchoHandler());
                         }
                     })

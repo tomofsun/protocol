@@ -6,35 +6,37 @@ import lombok.Data;
 public class ProtoBody {
 
     /**
-     * 报文头(4字节)
+     * 魔法数(4字节)
      * 固定为0x55776688
      */
-    private byte[] start;
+    private byte[] magic;
     /**
-     * 报文特殊信息(1字节)
-     * 从右向左第1个bit位 - 0: 大端; 1: 小端
+     * 版本号(1字节)
      */
-    private byte header;
+    private byte version;
     /**
      * 报文类型(1字节)
-     * 0: 心跳包ping
-     * 1: 心跳包pong
-     * 2: body为二进制的数据包
-     * 3: body为string的数据表
      */
     private byte type;
     /**
-     * 版本号(2字节)
-     * unsigned short,由于java不支持unsigned,通过int表示
+     * 数据序列化算法(1字节)
      */
-    private int version;
+    private byte serializer;
+    /**
+     * 预留字段(1字节)
+     */
+    private byte todo;
     /**
      * body报文长度(4字节)
-     * unsigned int,由于java不支持unsigned,通过long表示
      */
-    private long length;
+    private int length;
     /**
      * 报文内容
      */
     private byte[] body;
+    /**
+     * 校验和(4字节)
+     */
+    private byte[] checksum;
+
 }
