@@ -31,7 +31,7 @@ public class EchoServer {
                             ch.pipeline().addLast(new ProtoBodyEncoder());
                             ch.pipeline().addLast(new ProtoBodyDecoder());
 
-                            ch.pipeline().addLast(new HeartbeatHandler());
+                            ch.pipeline().addLast(new HeartbeatHandler(60));
 
                             ch.pipeline().addLast(new SerializerEncoder());
                             ch.pipeline().addLast(new SerializerDecoder());

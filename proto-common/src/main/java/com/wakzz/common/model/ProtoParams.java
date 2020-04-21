@@ -4,6 +4,8 @@ import com.wakzz.common.context.ProtoSerializer;
 import com.wakzz.common.context.ProtoVersion;
 import lombok.Data;
 
+import java.util.Date;
+
 @Data
 public class ProtoParams {
 
@@ -22,4 +24,6 @@ public class ProtoParams {
      * SSL对称加密秘钥
      */
     private String sslCipher;
+
+    private Date lastReadTime;
 }
