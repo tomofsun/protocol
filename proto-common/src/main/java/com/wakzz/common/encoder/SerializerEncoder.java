@@ -2,6 +2,8 @@ package com.wakzz.common.encoder;
 
 import com.wakzz.common.context.Constant;
 import com.wakzz.common.context.ProtoSerializer;
+import com.wakzz.common.context.ProtoType;
+import com.wakzz.common.model.ProtoBody;
 import com.wakzz.common.model.ProtoParams;
 import com.wakzz.common.serializer.SerializerFactory;
 import com.wakzz.common.serializer.StringSerializer;
@@ -43,7 +45,10 @@ public class SerializerEncoder extends MessageToMessageEncoder<Object> {
 
         StringSerializer serializer = SerializerFactory.getSerializer(protoParams.getProtoSerializer());
         byte[] buffer = serializer.serialize(object);
-        out.add(buffer);
+        ProtoBody body = new ProtoBody();
+        body.setType(ProtoType.Body.getValue());
+        body.setBody(buffer);
+        out.add(body);
     }
 
 }

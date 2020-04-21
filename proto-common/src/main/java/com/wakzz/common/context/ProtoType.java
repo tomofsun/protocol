@@ -35,4 +35,14 @@ public enum ProtoType {
     public byte getValue() {
         return value;
     }
+
+    public static ProtoType valueOf(byte value) {
+        ProtoType[] arrays = values();
+        for (ProtoType type : arrays) {
+            if (type.getValue() == value) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

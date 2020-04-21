@@ -5,6 +5,7 @@ import com.wakzz.common.coder.ProtoCoderFactory;
 import com.wakzz.common.context.Constant;
 import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.context.ProtoVersion;
+import com.wakzz.common.model.ProtoBody;
 import com.wakzz.common.model.ProtoParams;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -14,7 +15,7 @@ import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 
 @ChannelHandler.Sharable
-public class ProtoBodyEncoder extends MessageToByteEncoder<byte[]> {
+public class ProtoBodyEncoder extends MessageToByteEncoder<ProtoBody> {
 
     private ProtoVersion version;
 
@@ -27,7 +28,7 @@ public class ProtoBodyEncoder extends MessageToByteEncoder<byte[]> {
     }
 
     @Override
-    protected void encode(ChannelHandlerContext ctx, byte[] body, ByteBuf out) {
+    protected void encode(ChannelHandlerContext ctx, ProtoBody body, ByteBuf out) {
         Attribute<ProtoParams> protoParamsAttr = ctx.channel().attr(AttributeKey.valueOf(Constant.ATTRIBUTE_PROTO_PARAMS));
 
         ProtoParams protoParams = protoParamsAttr.get();
@@ -42,7 +43,7 @@ public class ProtoBodyEncoder extends MessageToByteEncoder<byte[]> {
         }
 
         ProtoCoder protoCoder = ProtoCoderFactory.getProtoCoder(protoParams.getProtoVersion());
-        protoCoder.encode(ProtoType.Body, body, protoParams, out);
+        protoCoder.encode(ProtoType.valueOf(body.getType()), body.getBody(), protoParams, out);
     }
 
 }

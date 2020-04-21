@@ -5,6 +5,7 @@ import com.wakzz.common.decoder.SerializerDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
 import com.wakzz.common.encoder.SerializerEncoder;
 import com.wakzz.common.handler.EchoHandler;
+import com.wakzz.common.handler.HeartbeatHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -29,6 +30,8 @@ public class EchoServer {
                         public void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(new ProtoBodyEncoder());
                             ch.pipeline().addLast(new ProtoBodyDecoder());
+
+                            ch.pipeline().addLast(new HeartbeatHandler());
 
                             ch.pipeline().addLast(new SerializerEncoder());
                             ch.pipeline().addLast(new SerializerDecoder());
