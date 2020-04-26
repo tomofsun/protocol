@@ -1,11 +1,11 @@
 package com.wakzz.common.coder;
 
 import com.wakzz.common.context.Constant;
+import com.wakzz.common.context.ProtoSerializer;
 import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.context.ProtoVersion;
 import com.wakzz.common.exception.UnknownMagicException;
 import com.wakzz.common.model.ProtoBody;
-import com.wakzz.common.model.ProtoParams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -22,14 +22,14 @@ public class ProtoCoderV1 implements ProtoCoder {
     private static final AtomicInteger requestIdFactory = new AtomicInteger();
 
     @Override
-    public byte[] encode(ProtoType protoType, byte[] body, ProtoParams protoParams) {
+    public byte[] encode(ProtoType protoType, ProtoSerializer protoSerializer, byte[] body) {
         ByteBuf out = Unpooled.buffer();
-        encode(protoType, body, protoParams, out);
+        encode(protoType, protoSerializer, body, out);
         return out.array();
     }
 
     @Override
-    public void encode(ProtoType protoType, byte[] body, ProtoParams protoParams, ByteBuf out) {
+    public void encode(ProtoType protoType, ProtoSerializer protoSerializer, byte[] body, ByteBuf out) {
         int bodyLength = body == null ? 0 : body.length;
 
         // 魔法数
@@ -39,18 +39,18 @@ public class ProtoCoderV1 implements ProtoCoder {
         // 指令类型
         out.writeByte(protoType.getValue());
         // 数据序列化算法
-        out.writeByte(protoParams.getProtoSerializer().getValue());
+        out.writeByte(protoSerializer.getValue());
         // 预留字段
         out.writeByte((byte) 0);
         // 请求ID
         out.writeInt(requestIdFactory.incrementAndGet());
-        // 报文长度
+        // 数据body长度
         out.writeInt(bodyLength);
         // 数据body
         if (body != null) {
             out.writeBytes(body);
         }
-        // 校验和 TODO
+        // TODO 计算校验和
         out.writeBytes(new byte[4]);
     }
 
@@ -117,7 +117,7 @@ public class ProtoCoderV1 implements ProtoCoder {
             protoBody.setLength(length);
             protoBody.setBody(body);
             protoBody.setChecksum(checksum);
-            // TODO 校验和检查
+            // TODO 校验和检查,校验和不通过则关闭连接
             list.add(protoBody);
         }
         return list;

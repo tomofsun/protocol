@@ -7,7 +7,7 @@ public class ProtoBody {
 
     /**
      * 魔法数(4字节)
-     * 固定为0x55776688
+     * 固定为0x33445566
      */
     private byte[] magic;
     /**

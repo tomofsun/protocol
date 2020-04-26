@@ -1,9 +1,8 @@
 package com.wakzz.common.handler;
 
-import com.wakzz.common.context.Constant;
+import com.wakzz.common.context.ProtoSerializer;
 import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.model.ProtoBody;
-import com.wakzz.common.model.ProtoParams;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -20,6 +19,8 @@ import java.util.Date;
 @ChannelHandler.Sharable
 public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
 
+    private static final String CONNECTION_LAST_READ_TIME_KEY = "_CONNECTION_LAST_READ_TIME_KEY_";
+
     private int maxIdleSecond;
     public HeartbeatHandler(int maxIdleSecond){
         this.maxIdleSecond = maxIdleSecond;
@@ -35,6 +36,7 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
     }
 
     private void handleRead(ChannelHandlerContext ctx, ProtoBody protoBody) {
+        // 更新当前连接的最后通信时间
         updateLastReadTime(ctx);
         if (protoBody.getType() == ProtoType.Pong.getValue()) {
             // 服务端返回的心跳包response,不需要处理
@@ -50,6 +52,7 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        // 关闭超时的连接
         closeIfTimeout(ctx);
         if (evt instanceof IdleStateEvent) {
             log.info("发送心跳包ping");
@@ -61,6 +64,7 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
 
     private void sendPing(ChannelHandlerContext ctx) {
         ProtoBody request = new ProtoBody();
+        request.setSerializer(ProtoSerializer.String.getValue());
         request.setType(ProtoType.Ping.getValue());
         ctx.writeAndFlush(request).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
     }
@@ -68,11 +72,12 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
     private void sendPong(ChannelHandlerContext ctx) {
         ProtoBody response = new ProtoBody();
         response.setType(ProtoType.Pong.getValue());
+        response.setSerializer(ProtoSerializer.String.getValue());
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
     }
 
     /**
-     * 连接超时,关闭连接
+     * 关闭超时的连接
      */
     private void closeIfTimeout(ChannelHandlerContext ctx) {
         if (isTimeout(ctx)) {
@@ -82,27 +87,22 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
     }
 
     private boolean isTimeout(ChannelHandlerContext ctx) {
-        Attribute<ProtoParams> protoParamsAttr = ctx.channel().attr(AttributeKey.valueOf(Constant.ATTRIBUTE_PROTO_PARAMS));
-        ProtoParams protoParams = protoParamsAttr.get();
-        if (protoParams == null) {
-            protoParams = new ProtoParams();
-            protoParams.setLastReadTime(new Date());
-            protoParamsAttr.set(protoParams);
+        Attribute<Date> attribute = ctx.channel().attr(AttributeKey.valueOf(CONNECTION_LAST_READ_TIME_KEY));
+        Date lastReadTime = attribute.get();
+        if (lastReadTime == null) {
+            return true;
         }
-        Date lastReadTime = protoParams.getLastReadTime();
 
         Calendar calendar = Calendar.getInstance();
         calendar.add(Calendar.SECOND, -maxIdleSecond);
         return calendar.getTime().after(lastReadTime);
     }
 
+    /**
+     * 更新当前连接的最后一次通信时间
+     */
     private void updateLastReadTime(ChannelHandlerContext ctx) {
-        Attribute<ProtoParams> protoParamsAttr = ctx.channel().attr(AttributeKey.valueOf(Constant.ATTRIBUTE_PROTO_PARAMS));
-        ProtoParams protoParams = protoParamsAttr.get();
-        if (protoParams == null) {
-            protoParams = new ProtoParams();
-            protoParamsAttr.set(protoParams);
-        }
-        protoParams.setLastReadTime(new Date());
+        Attribute<Date> attribute = ctx.channel().attr(AttributeKey.valueOf(CONNECTION_LAST_READ_TIME_KEY));
+        attribute.set(new Date());
     }
 }

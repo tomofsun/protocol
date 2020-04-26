@@ -1,11 +1,9 @@
 package com.wakzz.common.codec;
 
-import com.wakzz.common.context.Constant;
 import com.wakzz.common.context.ProtoSerializer;
 import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.exception.UnknownProtoSerializerException;
 import com.wakzz.common.model.ProtoBody;
-import com.wakzz.common.model.ProtoParams;
 import com.wakzz.common.serializer.SerializerFactory;
 import com.wakzz.common.serializer.StringSerializer;
 import io.netty.channel.ChannelHandlerContext;
@@ -13,41 +11,36 @@ import io.netty.handler.codec.MessageToMessageCodec;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 
 import java.util.List;
 
 @Slf4j
 public class SerializerCodec extends MessageToMessageCodec<ProtoBody, Object> {
 
-    private ProtoSerializer protoSerializer;
+    private static final String PROTO_SERIALIZER_KEY = "_PROTO_SERIALIZER_KEY_";
+
+    private ProtoSerializer defaultProtoSerializer;
 
     public SerializerCodec() {
         this(ProtoSerializer.String);
     }
 
-    public SerializerCodec(ProtoSerializer protoSerializer) {
-        this.protoSerializer = protoSerializer;
+    public SerializerCodec(ProtoSerializer defaultProtoSerializer) {
+        this.defaultProtoSerializer = defaultProtoSerializer;
     }
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Object msg, List<Object> out) throws Exception {
-        Attribute<ProtoParams> protoParamsAttr = ctx.channel().attr(AttributeKey.valueOf(Constant.ATTRIBUTE_PROTO_PARAMS));
+        // 获取当前连接使用的报文序列化算法,由第一次通信时设置
+        Attribute<ProtoSerializer> attribute = ctx.channel().attr(AttributeKey.valueOf(PROTO_SERIALIZER_KEY));
+        ProtoSerializer protoSerializer = ObjectUtils.defaultIfNull(attribute.get(), defaultProtoSerializer);
 
-        ProtoParams protoParams = protoParamsAttr.get();
-        if (protoParams == null) {
-            protoParams = new ProtoParams();
-            protoParams.setProtoSerializer(protoSerializer);
-            protoParamsAttr.set(protoParams);
-        }
-        ProtoSerializer protoSerializer = protoParams.getProtoSerializer();
-        if (protoSerializer == null) {
-            protoParams.setProtoSerializer(this.protoSerializer);
-        }
-
-        StringSerializer serializer = SerializerFactory.getSerializer(protoParams.getProtoSerializer());
+        StringSerializer serializer = SerializerFactory.getSerializer(protoSerializer);
         byte[] buffer = serializer.serialize(msg);
         ProtoBody body = new ProtoBody();
         body.setType(ProtoType.Body.getValue());
+        body.setSerializer(protoSerializer.getValue());
         body.setBody(buffer);
         out.add(body);
     }
@@ -60,6 +53,11 @@ public class SerializerCodec extends MessageToMessageCodec<ProtoBody, Object> {
             if (protoSerializer == null) {
                 throw new UnknownProtoSerializerException(msg.getSerializer());
             }
+
+            // 第一次通信时,设置连接的序序列化算法
+            Attribute<ProtoSerializer> attribute = ctx.channel().attr(AttributeKey.valueOf(PROTO_SERIALIZER_KEY));
+            attribute.setIfAbsent(protoSerializer);
+
             StringSerializer serializer = SerializerFactory.getSerializer(protoSerializer);
             String value = serializer.deserialize(body, String.class);
             out.add(value);
