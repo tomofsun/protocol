@@ -42,9 +42,7 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
         } else if (protoBody.getType() == ProtoType.Ping.getValue()) {
             // 客户端请求的心跳包request,返回心跳包response
             log.info("接收心跳包ping,回复心跳包pong");
-            ProtoBody response = new ProtoBody();
-            response.setType(ProtoType.Pong.getValue());
-            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+            sendPong(ctx);
         } else {
             ctx.fireChannelRead(protoBody);
         }
@@ -52,19 +50,34 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<ProtoBody> {
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        if (isTimeout(ctx)) {
-            // 连接超时,关闭连接
-            log.info("连接超时,关闭连接");
-            ctx.close();
-            return;
-        }
+        closeIfTimeout(ctx);
         if (evt instanceof IdleStateEvent) {
             log.info("发送心跳包ping");
-            ProtoBody request = new ProtoBody();
-            request.setType(ProtoType.Ping.getValue());
-            ctx.writeAndFlush(request).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+            sendPing(ctx);
         } else {
             super.userEventTriggered(ctx, evt);
+        }
+    }
+
+    private void sendPing(ChannelHandlerContext ctx) {
+        ProtoBody request = new ProtoBody();
+        request.setType(ProtoType.Ping.getValue());
+        ctx.writeAndFlush(request).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+    }
+
+    private void sendPong(ChannelHandlerContext ctx) {
+        ProtoBody response = new ProtoBody();
+        response.setType(ProtoType.Pong.getValue());
+        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+    }
+
+    /**
+     * 连接超时,关闭连接
+     */
+    private void closeIfTimeout(ChannelHandlerContext ctx) {
+        if (isTimeout(ctx)) {
+            log.info("连接超时,关闭连接");
+            ctx.close();
         }
     }
 

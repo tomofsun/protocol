@@ -1,9 +1,8 @@
 package com.wakzz.client;
 
+import com.wakzz.common.codec.SerializerCodec;
 import com.wakzz.common.decoder.ProtoBodyDecoder;
-import com.wakzz.common.decoder.SerializerDecoder;
 import com.wakzz.common.encoder.ProtoBodyEncoder;
-import com.wakzz.common.encoder.SerializerEncoder;
 import com.wakzz.common.handler.HeartbeatHandler;
 import com.wakzz.common.handler.PrintfHandler;
 import io.netty.bootstrap.Bootstrap;
@@ -37,8 +36,7 @@ public class EchoClient {
 
                         ch.pipeline().addLast(new HeartbeatHandler(60));
 
-                        ch.pipeline().addLast(new SerializerEncoder());
-                        ch.pipeline().addLast(new SerializerDecoder());
+                        ch.pipeline().addLast(new SerializerCodec());
 
                         ch.pipeline().addLast(new PrintfHandler());
                     }
