@@ -63,6 +63,7 @@ public class SerializerCodec extends MessageToMessageCodec<ProtoBody, Object> {
             StringSerializer serializer = SerializerFactory.getSerializer(protoSerializer);
             String value = serializer.deserialize(body, String.class);
             out.add(value);
+            log.info("requestId: {}, value: {}", msg.getRequestId(), value);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             ctx.close();

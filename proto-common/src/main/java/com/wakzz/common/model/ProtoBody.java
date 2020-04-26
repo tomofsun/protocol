@@ -27,6 +27,10 @@ public class ProtoBody {
      */
     private byte todo;
     /**
+     * 请求序列号(4字节)
+     */
+    private int requestId;
+    /**
      * body报文长度(4字节)
      */
     private int length;

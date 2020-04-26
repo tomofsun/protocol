@@ -13,10 +13,13 @@ import io.netty.util.ReferenceCountUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProtoCoderV1 implements ProtoCoder {
 
     private static final ProtoVersion protoVersion = ProtoVersion.V1;
+
+    private static final AtomicInteger requestIdFactory = new AtomicInteger();
 
     @Override
     public byte[] encode(ProtoType protoType, byte[] body, ProtoParams protoParams) {
@@ -38,7 +41,9 @@ public class ProtoCoderV1 implements ProtoCoder {
         // 数据序列化算法
         out.writeByte(protoParams.getProtoSerializer().getValue());
         // 预留字段
-        out.writeByte((byte)0);
+        out.writeByte((byte) 0);
+        // 请求ID
+        out.writeInt(requestIdFactory.incrementAndGet());
         // 报文长度
         out.writeInt(bodyLength);
         // 数据body
@@ -54,24 +59,24 @@ public class ProtoCoderV1 implements ProtoCoder {
         List<ProtoBody> list = new ArrayList<>();
         // 循环读取解决粘包
         while (true) {
-            // 完整报文至少16个字节
+            // 完整报文至少20个字节
             // 半包等待后续数据
-            if (in.readableBytes() < 16) {
+            if (in.readableBytes() < 20) {
                 break;
             }
 
-            // 如果报文开头不是0x55776688,则抛异常断开连接
-            byte[] magicHeader = new byte[4];
-            in.getBytes(in.readerIndex(), magicHeader);
-            if (Constant.MAGIC_HEADER[0] != magicHeader[0] ||
-                    Constant.MAGIC_HEADER[1] != magicHeader[1] ||
-                    Constant.MAGIC_HEADER[2] != magicHeader[2] ||
-                    Constant.MAGIC_HEADER[3] != magicHeader[3]) {
-                throw new UnknownMagicException(magicHeader);
+            // 如果报文开头不是0x33445566,则抛异常断开连接
+            byte[] header = new byte[20];
+            in.getBytes(in.readerIndex(), header);
+            if (Constant.MAGIC_HEADER[0] != header[0] ||
+                    Constant.MAGIC_HEADER[1] != header[1] ||
+                    Constant.MAGIC_HEADER[2] != header[2] ||
+                    Constant.MAGIC_HEADER[3] != header[3]) {
+                throw new UnknownMagicException(header);
             }
 
             // 检查报文是否接受完整
-            long frameLength = getFrameLength(in);
+            long frameLength = getFrameLength(header);
             // TODO 最大请求报文长度
             // TODO 等待超时后抛弃报文
             // 半包等待后续数据
@@ -89,6 +94,8 @@ public class ProtoCoderV1 implements ProtoCoder {
             byte serializer = in.readByte();
             // 预留字段
             byte todo = in.readByte();
+            // 请求ID
+            int requestId = in.readInt();
             // 报文长度
             int length = in.readInt();
             // 数据
@@ -106,6 +113,7 @@ public class ProtoCoderV1 implements ProtoCoder {
             protoBody.setType(type);
             protoBody.setSerializer(serializer);
             protoBody.setTodo(todo);
+            protoBody.setRequestId(requestId);
             protoBody.setLength(length);
             protoBody.setBody(body);
             protoBody.setChecksum(checksum);
@@ -118,8 +126,14 @@ public class ProtoCoderV1 implements ProtoCoder {
     /**
      * 获取当前请求报文的字节长度
      */
-    private long getFrameLength(ByteBuf in) {
-        long length = in.getInt(in.readerIndex() + 8);
-        return length + 16;
+    private long getFrameLength(byte[] header) {
+        // body长度在第13-16个字节
+        final int index = 12;
+        long length = (header[index] & 0xff) << 24 |
+                (header[index + 1] & 0xff) << 16 |
+                (header[index + 2] & 0xff) << 8 |
+                header[index + 3] & 0xff;
+        // 报文长度=body长度+20个字节的其他固定字段
+        return length + 20;
     }
 }
