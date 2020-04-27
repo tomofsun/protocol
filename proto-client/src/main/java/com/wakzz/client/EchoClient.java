@@ -42,7 +42,8 @@ public class EchoClient {
                     }
                 });
         Channel channel = bootstrap.connect("127.0.0.1", 8000).sync().channel();
-        channel.writeAndFlush("World").sync();
+        for (int i = 0; i < 10; i++)
+            channel.writeAndFlush("HELLO, WORLD").sync();
     }
 
 }

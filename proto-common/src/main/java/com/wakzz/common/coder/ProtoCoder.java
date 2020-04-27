@@ -9,8 +9,6 @@ import java.util.List;
 
 public interface ProtoCoder {
 
-    byte[] encode(ProtoType protoType, ProtoSerializer protoSerializer, byte[] body);
-
     void encode(ProtoType protoType, ProtoSerializer protoSerializer, byte[] body, ByteBuf out);
 
     List<ProtoBody> decode(ByteBuf in);

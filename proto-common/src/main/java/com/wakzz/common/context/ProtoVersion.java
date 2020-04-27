@@ -7,20 +7,20 @@ public enum ProtoVersion {
 
     V1((byte) 0x00);
 
-    private byte version;
+    private byte value;
 
-    ProtoVersion(byte version) {
-        this.version = version;
+    ProtoVersion(byte value) {
+        this.value = value;
     }
 
-    public byte getVersion() {
-        return version;
+    public byte getValue() {
+        return value;
     }
 
     public static ProtoVersion valueOf(byte value) {
         ProtoVersion[] arrays = values();
         for (ProtoVersion version : arrays) {
-            if (version.getVersion() == value) {
+            if (version.getValue() == value) {
                 return version;
             }
         }

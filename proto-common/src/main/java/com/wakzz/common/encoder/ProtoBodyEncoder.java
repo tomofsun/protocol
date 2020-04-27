@@ -12,8 +12,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 
+@Slf4j
 @ChannelHandler.Sharable
 public class ProtoBodyEncoder extends MessageToByteEncoder<ProtoBody> {
 
@@ -31,7 +33,7 @@ public class ProtoBodyEncoder extends MessageToByteEncoder<ProtoBody> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, ProtoBody body, ByteBuf out) {
-        // 获取当前连接使用的协议版本,由第一次通信时设置
+        // 获取当前channel使用的协议版本,由第一次请求时设置
         Attribute<ProtoVersion> attribute = ctx.channel().attr(AttributeKey.valueOf(PROTO_VERSION_KEY));
         ProtoVersion protoVersion = ObjectUtils.defaultIfNull(attribute.get(), defaultProtoVersion);
 

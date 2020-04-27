@@ -34,9 +34,12 @@ public class ProtoBodyDecoder extends ByteToMessageDecoder {
     }
 
     private List<ProtoBody> decode(ChannelHandlerContext ctx, ByteBuf in) {
+        // 版本号在第5个字节,不足5个字节则是半包,等待后续数据
         if (in.readableBytes() < 5) {
             return Collections.emptyList();
         }
+
+        // 读取版本号,按版本号解析报文数据
         byte version = in.getByte(in.readerIndex() + 4);
         ProtoVersion protoVersion = ProtoVersion.valueOf(version);
         if (protoVersion == null) {
@@ -46,16 +49,11 @@ public class ProtoBodyDecoder extends ByteToMessageDecoder {
         ProtoCoder protoCoder = ProtoCoderFactory.getProtoCoder(protoVersion);
         List<ProtoBody> list = protoCoder.decode(in);
         if (!list.isEmpty()) {
-            // 第一次通信时,设置协议版本
+            // 第一次接收客户端报文时,读取客户端报文的版本号
+            // 并将版本号于当前channel绑定,之后该channel的所有报文均以版本解析
             Attribute<ProtoVersion> attribute = ctx.channel().attr(AttributeKey.valueOf(PROTO_VERSION_KEY));
             attribute.setIfAbsent(protoVersion);
         }
         return list;
-    }
-
-    @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) {
-        log.info("ProtoBodyDecoder:channelReadComplete");
-        ctx.fireChannelReadComplete();
     }
 }

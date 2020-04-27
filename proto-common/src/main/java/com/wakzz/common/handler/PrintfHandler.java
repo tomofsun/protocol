@@ -11,14 +11,8 @@ public class PrintfHandler extends SimpleChannelInboundHandler<Object> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Object object) {
-        log.info("request object: {}", object);
+        log.info("{}", object);
         ctx.fireChannelRead(object);
-    }
-
-    @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) {
-        log.info("PrintfHandler:channelReadComplete");
-        ctx.fireChannelReadComplete();
     }
 
 }

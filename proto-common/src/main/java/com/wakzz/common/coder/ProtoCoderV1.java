@@ -1,6 +1,5 @@
 package com.wakzz.common.coder;
 
-import com.wakzz.common.context.Constant;
 import com.wakzz.common.context.ProtoSerializer;
 import com.wakzz.common.context.ProtoType;
 import com.wakzz.common.context.ProtoVersion;
@@ -8,7 +7,6 @@ import com.wakzz.common.exception.UnknownMagicException;
 import com.wakzz.common.model.ProtoBody;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 
 import java.util.ArrayList;
@@ -17,25 +15,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProtoCoderV1 implements ProtoCoder {
 
+    /**
+     * 魔法数,报文分割标识
+     */
+    private static final byte[] MAGIC_HEADER = new byte[]{0x33, 0x44, 0x55, 0x66};
+
     private static final ProtoVersion protoVersion = ProtoVersion.V1;
 
     private static final AtomicInteger requestIdFactory = new AtomicInteger();
-
-    @Override
-    public byte[] encode(ProtoType protoType, ProtoSerializer protoSerializer, byte[] body) {
-        ByteBuf out = Unpooled.buffer();
-        encode(protoType, protoSerializer, body, out);
-        return out.array();
-    }
 
     @Override
     public void encode(ProtoType protoType, ProtoSerializer protoSerializer, byte[] body, ByteBuf out) {
         int bodyLength = body == null ? 0 : body.length;
 
         // 魔法数
-        out.writeBytes(Constant.MAGIC_HEADER);
+        out.writeBytes(MAGIC_HEADER);
         // 版本号
-        out.writeByte(protoVersion.getVersion());
+        out.writeByte(protoVersion.getValue());
         // 指令类型
         out.writeByte(protoType.getValue());
         // 数据序列化算法
@@ -68,14 +64,14 @@ public class ProtoCoderV1 implements ProtoCoder {
             // 如果报文开头不是0x33445566,则抛异常断开连接
             byte[] header = new byte[20];
             in.getBytes(in.readerIndex(), header);
-            if (Constant.MAGIC_HEADER[0] != header[0] ||
-                    Constant.MAGIC_HEADER[1] != header[1] ||
-                    Constant.MAGIC_HEADER[2] != header[2] ||
-                    Constant.MAGIC_HEADER[3] != header[3]) {
+            if (MAGIC_HEADER[0] != header[0] ||
+                    MAGIC_HEADER[1] != header[1] ||
+                    MAGIC_HEADER[2] != header[2] ||
+                    MAGIC_HEADER[3] != header[3]) {
                 throw new UnknownMagicException(header);
             }
 
-            // 检查报文是否接受完整
+            // 检查报文是否接收完整
             long frameLength = getFrameLength(header);
             // TODO 最大请求报文长度
             // TODO 等待超时后抛弃报文
@@ -108,7 +104,7 @@ public class ProtoCoderV1 implements ProtoCoder {
             ReferenceCountUtil.safeRelease(checksumBuffer);
 
             ProtoBody protoBody = new ProtoBody();
-            protoBody.setMagic(Constant.MAGIC_HEADER);
+            protoBody.setMagic(MAGIC_HEADER);
             protoBody.setVersion(version);
             protoBody.setType(type);
             protoBody.setSerializer(serializer);
@@ -132,8 +128,8 @@ public class ProtoCoderV1 implements ProtoCoder {
         long length = (header[index] & 0xff) << 24 |
                 (header[index + 1] & 0xff) << 16 |
                 (header[index + 2] & 0xff) << 8 |
-                header[index + 3] & 0xff;
-        // 报文长度=body长度+20个字节的其他固定字段
+                (header[index + 3] & 0xff);
+        // 报文长度 = body长度 + 20 个字节的其他固定字段
         return length + 20;
     }
 }

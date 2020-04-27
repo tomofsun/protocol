@@ -6,6 +6,7 @@ import com.wakzz.common.exception.UnknownProtoSerializerException;
 import com.wakzz.common.model.ProtoBody;
 import com.wakzz.common.serializer.SerializerFactory;
 import com.wakzz.common.serializer.StringSerializer;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
 import io.netty.util.Attribute;
@@ -16,6 +17,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import java.util.List;
 
 @Slf4j
+@ChannelHandler.Sharable
 public class SerializerCodec extends MessageToMessageCodec<ProtoBody, Object> {
 
     private static final String PROTO_SERIALIZER_KEY = "_PROTO_SERIALIZER_KEY_";
